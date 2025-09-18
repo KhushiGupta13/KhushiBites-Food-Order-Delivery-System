@@ -4,54 +4,86 @@ const Vendor = require("../models/Vendor");
 
 const router = express.Router();
 
-// ----------------- ADD OR UPDATE MENU ITEMS -----------------
-// Endpoint: POST /api/menu/:vendorId
-// Use this when a vendor wants to add a new item or update existing menu
+// ----------------- ADD MENU ITEM -----------------
+// POST /api/menu/:vendorId
 router.post("/:vendorId", async (req, res) => {
   try {
     const { vendorId } = req.params;
-    const { items } = req.body; // items should be an array of {name, description, price, image, isAvailable}
+    const newItem = req.body; // expecting a single item object
 
-    // Check if vendor exists
     const vendor = await Vendor.findById(vendorId);
-    if (!vendor) {
-      return res.status(404).json({ msg: "Vendor not found" });
-    }
+    if (!vendor) return res.status(404).json({ msg: "Vendor not found" });
 
-    // Check if this vendor already has a menu
     let menu = await Menu.findOne({ vendor: vendorId });
 
     if (!menu) {
-      // If no menu exists, create a new one
-      menu = new Menu({ vendor: vendorId, items });
+      menu = new Menu({ vendor: vendorId, items: [newItem] });
     } else {
-      // If menu exists, update items
-      menu.items = items;
+      menu.items.push(newItem);
     }
 
     await menu.save();
-    res.json({ msg: "Menu updated successfully", menu });
+    res.json({ msg: "Menu item added successfully", item: newItem });
   } catch (err) {
-    console.error("Error updating menu:", err);
+    console.error(err);
     res.status(500).json({ msg: "Server error" });
   }
 });
 
 // ----------------- GET VENDOR MENU -----------------
-// Endpoint: GET /api/menu/:vendorId
-// Customers will use this to view the menu of a vendor
 router.get("/:vendorId", async (req, res) => {
   try {
     const { vendorId } = req.params;
-
-    const menu = await Menu.findOne({ vendor: vendorId }).populate("vendor", "name cuisineType");
-    if (!menu) {
-      return res.status(404).json({ msg: "Menu not found for this vendor" });
-    }
+    const menu = await Menu.findOne({ vendor: vendorId });
+    if (!menu) return res.status(404).json({ msg: "Menu not found" });
 
     res.json(menu);
   } catch (err) {
-    console.error("Error fetching menu:", err);
+    console.error(err);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
+// ----------------- UPDATE SINGLE MENU ITEM -----------------
+router.put("/item/:itemId", async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    const updatedItem = req.body;
+
+    const menu = await Menu.findOne({ "items._id": itemId });
+    if (!menu) return res.status(404).json({ msg: "Menu item not found" });
+
+    const index = menu.items.findIndex((i) => i._id.toString() === itemId);
+    if (index === -1) return res.status(404).json({ msg: "Menu item not found" });
+
+    menu.items[index] = { ...menu.items[index]._doc, ...updatedItem };
+
+    await menu.save();
+    res.json({ msg: "Menu item updated successfully", item: menu.items[index] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
+// ----------------- DELETE SINGLE MENU ITEM -----------------
+router.delete("/item/:itemId", async (req, res) => {
+  try {
+    const { itemId } = req.params;
+
+    const menu = await Menu.findOne({ "items._id": itemId });
+    if (!menu) return res.status(404).json({ msg: "Menu item not found" });
+
+    const itemIndex = menu.items.findIndex((i) => i._id.toString() === itemId);
+    if (itemIndex === -1) return res.status(404).json({ msg: "Menu item not found" });
+
+    const deletedItem = menu.items[itemIndex];
+    menu.items.splice(itemIndex, 1);
+    await menu.save();
+
+    res.json({ msg: "Menu item deleted successfully", item: deletedItem });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ msg: "Server error" });
   }
 });

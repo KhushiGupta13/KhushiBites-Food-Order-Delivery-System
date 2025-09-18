@@ -32,13 +32,14 @@ router.post("/register", async (req, res) => {
     await vendor.save();
 
     const token = jwt.sign(
-      { id: vendor._id, role: vendor.role },
+      { id: vendor._id, role: vendor.role || "vendor" },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
     res.json({ token, vendor });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ msg: err.message });
   }
 });
@@ -59,13 +60,14 @@ router.post("/login", async (req, res) => {
     if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
 
     const token = jwt.sign(
-      { id: vendor._id, role: vendor.role },
+      { id: vendor._id, role: vendor.role || "vendor" },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
     res.json({ token, vendor });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ msg: err.message });
   }
 });
@@ -75,8 +77,10 @@ router.post("/login", async (req, res) => {
  * @desc    Add menu item (protected)
  */
 router.post("/menu", authMiddleware("vendor"), async (req, res) => {
-  console.log("🍔 Add menu item hit", req.vendor._id, req.body);
+  console.log("🍔 Add menu item hit", req.vendor?._id, req.body);
   try {
+    if (!req.vendor) return res.status(403).json({ msg: "Access denied" });
+
     const { itemName, description, price, image, available } = req.body;
 
     const vendor = await Vendor.findById(req.vendor._id);
@@ -87,6 +91,7 @@ router.post("/menu", authMiddleware("vendor"), async (req, res) => {
 
     res.json(vendor.menu);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ msg: err.message });
   }
 });
@@ -96,12 +101,15 @@ router.post("/menu", authMiddleware("vendor"), async (req, res) => {
  * @desc    Get logged-in vendor menu (protected)
  */
 router.get("/menu", authMiddleware("vendor"), async (req, res) => {
-  console.log("📜 Get vendor menu hit", req.vendor._id);
+  console.log("📜 Get vendor menu hit", req.vendor?._id);
   try {
+    if (!req.vendor) return res.status(403).json({ msg: "Access denied" });
+
     const vendor = await Vendor.findById(req.vendor._id);
     if (!vendor) return res.status(404).json({ msg: "Vendor not found" });
     res.json(vendor.menu);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ msg: err.message });
   }
 });
@@ -113,6 +121,8 @@ router.get("/menu", authMiddleware("vendor"), async (req, res) => {
 router.put("/menu/:itemId", authMiddleware("vendor"), async (req, res) => {
   console.log("✏️ Update menu item hit", req.params.itemId, req.body);
   try {
+    if (!req.vendor) return res.status(403).json({ msg: "Access denied" });
+
     const vendor = await Vendor.findById(req.vendor._id);
     if (!vendor) return res.status(404).json({ msg: "Vendor not found" });
 
@@ -124,6 +134,7 @@ router.put("/menu/:itemId", authMiddleware("vendor"), async (req, res) => {
 
     res.json(vendor.menu);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ msg: err.message });
   }
 });
@@ -135,6 +146,8 @@ router.put("/menu/:itemId", authMiddleware("vendor"), async (req, res) => {
 router.delete("/menu/:itemId", authMiddleware("vendor"), async (req, res) => {
   console.log("🗑️ Delete menu item hit", req.params.itemId);
   try {
+    if (!req.vendor) return res.status(403).json({ msg: "Access denied" });
+
     const vendor = await Vendor.findById(req.vendor._id);
     if (!vendor) return res.status(404).json({ msg: "Vendor not found" });
 
@@ -146,20 +159,34 @@ router.delete("/menu/:itemId", authMiddleware("vendor"), async (req, res) => {
 
     res.json(vendor.menu);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ msg: err.message });
   }
 });
 
 /**
  * @route   GET /api/vendor
- * @desc    Get all vendors (public)
+ * @desc    Get all vendors (public, no password)
  */
 router.get("/", async (req, res) => {
   console.log("📂 Get all vendors hit");
   try {
     const vendors = await Vendor.find();
-    res.json(vendors);
+
+    const publicVendors = vendors.map(v => ({
+      _id: v._id,
+      name: v.name,
+      address: v.address,
+      contactNumber: v.contactNumber,
+      cuisineType: v.cuisineType,
+      menu: v.menu,
+      avgRating: v.avgRating || "0",
+      image: v.image || "",
+    }));
+
+    res.json(publicVendors);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ msg: err.message });
   }
 });
@@ -171,7 +198,7 @@ router.get("/", async (req, res) => {
 router.put("/:vendorId", authMiddleware("vendor"), async (req, res) => {
   console.log("✏️ Update vendor hit", req.params.vendorId, req.body);
   try {
-    if (req.vendor._id.toString() !== req.params.vendorId)
+    if (!req.vendor || req.vendor._id.toString() !== req.params.vendorId)
       return res.status(403).json({ msg: "Access denied" });
 
     const { name, email, address, contactNumber, cuisineType } = req.body;
@@ -187,6 +214,7 @@ router.put("/:vendorId", authMiddleware("vendor"), async (req, res) => {
     await vendor.save();
     res.json({ msg: "Vendor updated successfully", vendor });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ msg: err.message });
   }
 });
@@ -198,13 +226,14 @@ router.put("/:vendorId", authMiddleware("vendor"), async (req, res) => {
 router.delete("/:vendorId", authMiddleware("vendor"), async (req, res) => {
   console.log("🗑️ Delete vendor hit", req.params.vendorId);
   try {
-    if (req.vendor._id.toString() !== req.params.vendorId)
+    if (!req.vendor || req.vendor._id.toString() !== req.params.vendorId)
       return res.status(403).json({ msg: "Access denied" });
 
     const vendor = await Vendor.findByIdAndDelete(req.params.vendorId);
     if (!vendor) return res.status(404).json({ msg: "Vendor not found" });
     res.json({ msg: "Vendor deleted successfully", vendor });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ msg: err.message });
   }
 });

@@ -11,18 +11,28 @@ exports.registerVendor = async (req, res) => {
   console.log("📩 Vendor register hit", req.body);
   try {
     const { name, email, password, address, contactNumber, cuisineType } = req.body;
+
+    // Check if email already exists
     const existing = await Vendor.findOne({ email });
     if (existing) return res.status(400).json({ msg: 'Email already exists' });
 
+    // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
+    // Create vendor
     const vendor = new Vendor({ name, email, passwordHash, address, contactNumber, cuisineType });
     await vendor.save();
 
-    const token = jwt.sign({ id: vendor._id, role: vendor.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    // Sign JWT
+    const token = jwt.sign(
+      { id: vendor._id, role: vendor.role || 'vendor' },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
     res.json({ token, vendor });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ msg: err.message });
   }
 };
@@ -40,10 +50,15 @@ exports.loginVendor = async (req, res) => {
     const isMatch = await bcrypt.compare(password, vendor.passwordHash);
     if (!isMatch) return res.status(400).json({ msg: 'Invalid credentials' });
 
-    const token = jwt.sign({ id: vendor._id, role: vendor.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign(
+      { id: vendor._id, role: vendor.role || 'vendor' },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
     res.json({ token, vendor });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ msg: err.message });
   }
 };
@@ -55,9 +70,13 @@ exports.addMenuItem = async (req, res) => {
   console.log("🍔 Add menu item hit", req.params.vendorId, req.body);
   try {
     const { vendorId } = req.params;
-    if (req.vendor._id.toString() !== vendorId) return res.status(403).json({ msg: 'Access denied' });
+
+    // Access control
+    if (!req.vendor || req.vendor._id.toString() !== vendorId)
+      return res.status(403).json({ msg: 'Access denied' });
 
     const { itemName, description, price, image, available } = req.body;
+
     const vendor = await Vendor.findById(vendorId);
     if (!vendor) return res.status(404).json({ msg: 'Vendor not found' });
 
@@ -65,6 +84,7 @@ exports.addMenuItem = async (req, res) => {
     await vendor.save();
     res.json(vendor.menu);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ msg: err.message });
   }
 };
@@ -79,6 +99,7 @@ exports.getVendorMenu = async (req, res) => {
     if (!vendor) return res.status(404).json({ msg: 'Vendor not found' });
     res.json(vendor.menu);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ msg: err.message });
   }
 };
@@ -92,6 +113,7 @@ exports.getAllVendors = async (req, res) => {
     const vendors = await Vendor.find();
     res.json(vendors);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ msg: err.message });
   }
 };
@@ -103,7 +125,10 @@ exports.updateVendor = async (req, res) => {
   console.log("✏️ Update vendor hit", req.params.vendorId, req.body);
   try {
     const { vendorId } = req.params;
-    if (req.vendor._id.toString() !== vendorId) return res.status(403).json({ msg: 'Access denied' });
+
+    // Access control
+    if (!req.vendor || req.vendor._id.toString() !== vendorId)
+      return res.status(403).json({ msg: 'Access denied' });
 
     const { name, email, address, contactNumber, cuisineType } = req.body;
     const vendor = await Vendor.findById(vendorId);
@@ -118,6 +143,7 @@ exports.updateVendor = async (req, res) => {
     await vendor.save();
     res.json({ msg: 'Vendor updated successfully', vendor });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ msg: err.message });
   }
 };
@@ -129,12 +155,16 @@ exports.deleteVendor = async (req, res) => {
   console.log("🗑️ Delete vendor hit", req.params.vendorId);
   try {
     const { vendorId } = req.params;
-    if (req.vendor._id.toString() !== vendorId) return res.status(403).json({ msg: 'Access denied' });
+
+    // Access control
+    if (!req.vendor || req.vendor._id.toString() !== vendorId)
+      return res.status(403).json({ msg: 'Access denied' });
 
     const vendor = await Vendor.findByIdAndDelete(vendorId);
     if (!vendor) return res.status(404).json({ msg: 'Vendor not found' });
     res.json({ msg: 'Vendor deleted successfully', vendor });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ msg: err.message });
   }
 };
