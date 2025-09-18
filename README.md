@@ -1,5 +1,5 @@
 # KhushiBites: Food Order Delivery System 🍔🛵
-![KhushiBites Logo](frontend/src/khushibites_logo.svg)
+![KhushiBites Logo](screenshots/khushibites_logo.svg)
 
 An academic project for a full-stack food ordering and delivery platform, providing a seamless experience for both vendors and customers.
 
@@ -58,40 +58,7 @@ This system enables users to order food from registered vendors, track their ord
 | Authentication | JWT (JSON Web Tokens)                    |
 | Real-Time      | Socket.IO                                |
 | Hosting        | Local / Render / Railway /Firebase (demo)|
-| Version Control| Git & GitHub                    |
-
-
-## Folder Structure
-
-KhushiBites-Food-Order-Delivery-System
-│
-├─ backend/
-│  ├─ controllers/        # API controllers
-│  ├─ models/             # MongoDB schemas
-│  ├─ routes/             # Express routes
-│  │
-│  ├─ middleware/         # Middleware functions
-│  │
-│  ├─ utils/              # Utility functions
-│  │
-│  ├─ node_modules/       # Installed npm packages
-│  ├─ config.js           # DB & environment config
-│  └─ server.js           # Backend entry point
-│
-├─ frontend/
-│  ├─ public/             # Static files (index.html, favicon, etc.)
-│  ├─ build/              # Production build folder
-│  ├─ node_modules/       # Installed npm packages
-│  ├─ src/
-│  │  ├─ components/      # Reusable React components
-│  │  │
-│  │  ├─ pages/           # React pages
-│  │  ├─ services/        # API calls using Axios
-│  │  │
-│  │  └─ App.js           # React main entry point
-│  │
-├─ screenshots/           # Project screenshots for documentation
-└─ README.md              # Project overview, setup instructions, screenshots
+| Version Control| Git & GitHub                             |
 
 
 ## Setup Instructions
