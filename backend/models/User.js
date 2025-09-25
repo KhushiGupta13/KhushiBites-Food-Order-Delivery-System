@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema(
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    role: { type: String, enum: ["user", "vendor"], default: "user" },
+    role: { type: String, enum: ["customer", "vendor"], default: "customer" }, // updated enum
   },
   { timestamps: true } // adds createdAt and updatedAt automatically
 );

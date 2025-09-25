@@ -1,33 +1,63 @@
-// backend/controllers/authController.js
-
 const User = require("../models/User");
+const jwt = require("jsonwebtoken");
 
-// User signup
+// Register a new user
 exports.register = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
 
-    const user = new User({ name, email, password });
-    await user.save();
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: "User already exists" });
+    }
 
-    res.status(201).json({ message: "User registered successfully", user });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    // Create new user
+    const user = await User.create({
+      name,
+      email,
+      password,
+      role,
+    });
+
+    res.status(201).json({ message: "User registered successfully", user: { id: user._id, email: user.email, role: user.role } });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Server error" });
   }
 };
 
-// User login
+// Login existing user
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // Find user by email
     const user = await User.findOne({ email });
-    if (!user || user.password !== password) {
-      return res.status(400).json({ error: "Invalid credentials" });
+    if (!user) {
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    res.status(200).json({ message: "Login successful", user });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    // Check password
+    const isMatch = await user.matchPassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    // Create JWT token
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      "your_jwt_secret_here", // replace with your .env secret
+      { expiresIn: "1d" }
+    );
+
+    res.status(200).json({
+      message: "Login successful",
+      token,
+      user: { id: user._id, email: user.email, role: user.role },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Server error" });
   }
 };
